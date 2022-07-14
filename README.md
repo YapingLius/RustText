@@ -1190,7 +1190,803 @@ fn main() {
     //变量 tup 被绑定了一个元组值 (500, 6.4, 1)，该元组的类型是 (i32, f64, u8)，
 }
 可以使用模式匹配或者 . 操作符来获取元组中的值。
+用模式匹配解构元组
+fn main() {
+    let tup = (500, 6.4, 1);
+
+    let (x, y, z) = tup;
+
+    println!("The value of y is: {}", y);
+}
+上述代码首先创建一个元组，然后将其绑定到 tup 上，接着使用 let (x, y, z) = tup; 来完成一次模式匹配，因为元组是 (n1, n2, n3) 形式的，因此我们用一模一样的 (x, y, z) 形式来进行匹配，元组中对应的值会绑定到变量 x， y， z上。这就是解构：用同样的形式把一个复杂对象中的值匹配出来。
+用 . 来访问元组
+模式匹配可以让我们一次性把元组中的值全部或者部分获取出来，如果只想要访问某个特定元素，那模式匹配就略显繁琐，对此，Rust 提供了 . 的访问方式：
+fn main() {
+    let x: (i32, f64, u8) = (500, 6.4, 1);
+
+    let five_hundred = x.0;
+
+    let six_point_four = x.1;
+
+    let one = x.2;
+}和其它语言的数组、字符串一样，元组的索引从 0 开始。
+fn main() {
+    let s1 = String::from("hello");
+
+    let (s2, len) = calculate_length(s1);
+
+    println!("The length of '{}' is {}.", s2, len);
+}
+fn calculate_length(s: String) -> (String, usize) {
+    let length = s.len(); // len() 返回字符串的长度
+
+    (s, length)
+}
+The length of 'hello' is 5.
+calculate_length 函数接收 s1 字符串的所有权，然后计算字符串的长度，接着把字符串所有权和字符串长度再返回给 s2 和 len 变量。
+
+在其他语言中，可以用结构体来声明一个三维空间中的点，例如 Point(10, 20, 30)，虽然使用 Rust 元组也可以做到：(10, 20, 30)，但是这样写有个非常重大的缺陷：不具备任何清晰的含义，在下一章节中，会提到一种与元组类似的结构体，元组结构体，可以解决这个问题。
+### Struct结构体
+结构体 struct 恰恰就是这样的复合数据结构，它是由其它数据类型组合而来。 其它语言也有类似的数据结构，不过可能有不同的名称，例如 object、 record 等。
+### 语法：
+一个结构体由几部分组成：
+1.通过关键字 struct 定义
+2.一个清晰明确的结构体 名称
+3.几个有名字的结构体 字段
+
+#![allow(unused)]
+fn main() {
+struct User {
+    active: bool,
+    username: String,
+    email: String,
+    sign_in_count: u64,
+}
+}
+
+该结构体名称是 User，拥有 4 个字段，且每个字段都有对应的字段名及类型声明，例如 username 代表了用户名，是一个可变的 String 类型。
+## 7月11日
+### 创建结构体实例
+为了使用上述结构体，我们需要创建 User 结构体的实例：
+    let user1 = User {
+        email: String::from("someone@example.com"),
+        username: String::from("someusername123"),
+        active: true,
+        sign_in_count: 1,
+    };
+    
+有几点值得注意:
+1.初始化实例时，每个字段都需要进行初始化
+2.初始化时的字段顺序不需要和结构体定义时的顺序一致
+访问结构体
+fn main() {
+fn build_user(email: String, username: String) -> User {
+    User {
+        email: email,
+        username: username,
+        active: true,
+        sign_in_count: 1,
+    }
+}
+它接收两个字符串参数： email 和 username，然后使用它们来创建一个 User 结构体，并且返回。可以注意到这两行： email: email 和 username: username，非常的扎眼，因为实在有些啰嗦，如果你从 TypeScript 过来，肯定会鄙视 Rust 一番，不过好在，它也不是无可救药：
+
+fn build_user(email: String, username: String) -> User {
+    User {
+        email,
+        username,
+        active: true,
+        sign_in_count: 1,
+    }
+}
+如上所示，当函数参数和结构体字段同名时，可以直接使用缩略的方式进行初始化，跟 TypeScript 中一模一样。
+### 结构体更新语法
+#![allow(unused)]
+fn main() {
+  let user2 = User {
+        active: user1.active,
+        username: user1.username,
+        email: String::from("another@example.com"),
+        sign_in_count: user1.sign_in_count,
+    };
+}
+好在 Rust 为我们提供了 结构体更新语法：
+  let user2 = User {
+        email: String::from("another@example.com"),
+        ..user1
+    };
+因为 user2 仅仅在 email 上与 user1 不同，因此我们只需要对 email 进行赋值，剩下的通过结构体更新语法 ..user1 即可完成。
+结构体更新语法跟赋值语句 = 非常相像，因此在上面代码中，user1 的部分字段所有权被转移到 user2 中：username 字段发生了所有权转移，作为结果，user1 无法再被使用。
+
+聪明的读者肯定要发问了：明明有三个字段进行了自动赋值，为何只有 username 发生了所有权转移？
+
+仔细回想一下所有权那一节的内容，我们提到了 Copy 特征：实现了 Copy 特征的类型无需所有权转移，可以直接在赋值时进行 数据拷贝，其中 bool 和 u64 类型就实现了 Copy 特征，因此 active 和 sign_in_count 字段在赋值给 user2 时，仅仅发生了拷贝，而不是所有权转移。
+
+值得注意的是：username 所有权被转移给了 user2，导致了 user1 无法再被使用，但是并不代表 user1 内部的其它字段不能被继续使用，例如：
+#[derive(Debug)]
+struct User {
+    active: bool,
+    username: String,
+    email: String,
+    sign_in_count: u64,
+}
+fn main() {
+let user1 = User {
+    email: String::from("someone@example.com"),
+    username: String::from("someusername123"),
+    active: true,
+    sign_in_count: 1,
+};
+let user2 = User {
+    active: user1.active,
+    username: user1.username,
+    email: String::from("another@example.com"),
+    sign_in_count: user1.sign_in_count,
+};
+println!("{}", user1.active);
+// 下面这行会报错
+println!("{:?}", user1);
+}
+结构体的内存排列
+先来看以下代码：
+
+
+#[derive(Debug)]
+ struct File {
+   name: String,
+   data: Vec<u8>,
+ }
+
+ fn main() {
+   let f1 = File {
+     name: String::from("f1.txt"),
+     data: Vec::new(),
+   };
+
+   let f1_name = &f1.name;
+   let f1_length = &f1.data.len();
+
+   println!("{:?}", f1);
+   println!("{} is {} bytes long", f1_name, f1_length);
+ }
+ 元组结构体(Tuple Struct)
+结构体必须要有名称，但是结构体的字段可以没有名称，这种结构体长得很像元组，因此被称为元组结构体，例如：
+    struct Color(i32, i32, i32);
+    struct Point(i32, i32, i32);
+
+    let black = Color(0, 0, 0);
+    let origin = Point(0, 0, 0);
+单元结构体(Unit-like Struct)
+还记得之前讲过的基本没啥用的单元类型吧？单元结构体就跟它很像，没有任何字段和属性，但是好在，它还挺有用。
+
+如果你定义一个类型，但是不关心该类型的内容, 只关心它的行为时，就可以使用 单元结构体：
 
 
 
+struct AlwaysEqual;
 
+let subject = AlwaysEqual;
+
+// 我们不关心 AlwaysEqual 的字段数据，只关心它的行为，因此将它声明为单元结构体，然后再为它实现某个特征
+impl SomeTrait for AlwaysEqual {
+
+}
+结构体数据的所有权
+在之前的 User 结构体的定义中，有一处细节：我们使用了自身拥有所有权的 String 类型而不是基于引用的 &str 字符串切片类型。这是一个有意而为之的选择：因为我们想要这个结构体拥有它所有的数据，而不是从其它地方借用数据。
+
+你也可以让 User 结构体从其它对象借用数据，不过这么做，就需要引入生命周期(lifetimes)这个新概念（也是一个复杂的概念），简而言之，生命周期能确保结构体的作用范围要比它所借用的数据的作用范围要小。
+
+总之，如果你想在结构体中使用一个引用，就必须加上生命周期，否则就会报错：
+struct User {
+    username: &str,
+    email: &str,
+    sign_in_count: u64,
+    active: bool,
+}
+
+fn main() {
+    let user1 = User {
+        email: "someone@example.com",
+        username: "someusername123",
+        active: true,
+        sign_in_count: 1,
+    };
+}
+使用 #[derive(Debug)] 来打印结构体的信息
+在前面的代码中我们使用 #[derive(Debug)] 对结构体进行了标记，这样才能使用 println!("{:?}", s); 的方式对其进行打印输出，如果不加，看看会发生什么:
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let rect1 = Rectangle {
+        width: 30,
+        height: 50,
+    };
+
+    println!("rect1 is {}", rect1);
+}
+fn main() {
+    let v = 1;
+    let b = true;
+
+    println!("{}, {}", v, b);
+}
+上面代码不会报错，那么结构体为什么不默认实现 Display 特征呢？原因在于结构体较为复杂，例如考虑以下问题：你想要逗号对字段进行分割吗？需要括号吗？加在什么地方？所有的字段都应该显示？类似的还有很多，由于这种复杂性，Rust 不希望猜测我们想要的是什么，而是把选择权交给我们自己来实现：如果要用 {} 的方式打印结构体，那就自己实现 Display 特征。
+让我们实现 Debug 特征，Oh No，就是不想实现 Display 特征，才用的 {:?}，怎么又要实现 Debug，但是仔细看，提示中有一行： add #[derive(Debug)] to Rectangle， 哦？这不就是我们前文一直在使用的吗？
+首先，Rust 默认不会为我们实现 Debug，为了实现，有两种方式可以选择：
+
+1.手动实现
+2.使用 derive 派生实现
+后者简单的多，但是也有限制，具体见附录 D，这里我们就不再深入讲解，来看看该如何使用:
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let rect1 = Rectangle {
+        width: 30,
+        height: 50,
+    };
+
+    println!("rect1 is {:?}", rect1);
+}
+rect1 is Rectangle { width: 30, height: 50 }
+
+当结构体较大时，我们可能希望能够有更好的输出表现，此时可以使用 {:#?} 来替代 {:?}，输出如下:
+rect1 is Rectangle {
+    width: 30,
+    height: 50,
+}
+下面的例子中清晰的展示了 dbg! 如何在打印出信息的同时，还把表达式的值赋给了 width:
+
+
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let scale = 2;
+    let rect1 = Rectangle {
+        width: dbg!(30 * scale),
+        height: 50,
+    };
+
+    dbg!(&rect1);
+}
+$ cargo run
+[src/main.rs:10] 30 * scale = 60
+[src/main.rs:14] &rect1 = Rectangle {
+    width: 60,
+    height: 50,
+}
+### 枚举
+枚举(enum 或 enumeration)允许你通过列举可能的成员来定义一个枚举类型，例如扑克牌花色：
+enum PokerSuit {
+  Clubs,
+  Spades,
+  Diamonds,
+  Hearts,
+}
+枚举值
+现在来创建 PokerSuit 枚举类型的两个成员实例：
+let heart = PokerSuit::Hearts;
+let diamond = PokerSuit::Diamonds;
+我们通过 :: 操作符来访问 PokerSuit 下的具体成员，从代码可以清晰看出，heart 和 diamond 都是 PokerSuit 枚举类型的，接着可以定义一个函数来使用它们：
+```rust
+fn main() {
+    let heart = PokerSuit::Hearts;
+    let diamond = PokerSuit::Diamonds;
+
+    print_suit(heart);
+    print_suit(diamond);
+}
+print_suit 函数的参数类型是 PokerSuit，因此我们可以把 heart 和 diamond 传给它，虽然 heart 是基于 PokerSuit 下的 Hearts 成员实例化的，但是它是货真价实的 PokerSuit 枚举类型。
+
+enum PokerSuit {
+    Clubs,
+    Spades,
+    Diamonds,
+    Hearts,
+}
+
+struct PokerCard {
+    suit: PokerSuit,
+    value: u8
+}
+
+fn main() {
+   let c1 = PokerCard {
+       suit: PokerSuit::Clubs,
+       value: 1,
+   };
+   let c2 = PokerCard {
+       suit: PokerSuit::Diamonds,
+       value: 12,
+   };
+}
+这段代码很好的完成了它的使命，通过结构体 PokerCard 来代表一张牌，结构体的 suit 字段表示牌的花色，类型是 PokerSuit 枚举类型，value 字段代表扑克牌的数值。
+
+可以吗？可以！好吗？说实话，不咋地，因为还有简洁得多的方式来实现：
+
+
+enum PokerCard {
+    Clubs(u8),
+    Spades(u8),
+    Diamonds(u8),
+    Hearts(u8),
+}
+
+fn main() {
+   let c1 = PokerCard::Spades(5);
+   let c2 = PokerCard::Diamonds(13);
+}
+不仅如此，同一个枚举类型下的不同成员还能持有不同的数据类型，例如让某些花色打印 1-13 的字样，另外的花色打印上 A-K 的字样：
+enum PokerCard {
+    Clubs(u8),
+    Spades(u8),
+    Diamonds(char),
+    Hearts(char),
+}
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+
+
+fn main() {
+    let m1 = Message::Quit;
+    let m2 = Message::Move{x:1,y:1};
+    let m3 = Message::ChangeColor(255,255,0);
+}
+该枚举类型代表一条消息，它包含四个不同的成员：
+Quit 没有任何关联数据
+Move 包含一个匿名结构体
+Write 包含一个 String 字符串
+ChangeColor 包含三个 i32
+
+fn main() {
+   let c1 = PokerCard::Spades(5);
+   let c2 = PokerCard::Diamonds('A');
+}
+fn print_suit(card: PokerSuit) {
+    println!("{:?}",card);
+}
+当然，我们也可以用结构体的方式来定义这些消息：
+struct QuitMessage; // 单元结构体
+struct MoveMessage {
+    x: i32,
+    y: i32,
+}
+struct WriteMessage(String); // 元组结构体
+struct ChangeColorMessage(i32, i32, i32); // 元组结构体
+同一化类型
+最后，再用一个实际项目中的简化片段，来结束枚举类型的语法学习。
+
+例如我们有一个 WEB 服务，需要接受用户的长连接，假设连接有两种：TcpStream 和 TlsStream，但是我们希望对这两个连接的处理流程相同，也就是用同一个函数来处理这两个连接，代码如下：
+fn new (stream: TcpStream) {
+  let mut s = stream;
+  if tls {
+    s = negotiate_tls(stream)
+  }
+
+  // websocket是一个WebSocket<TcpStream>或者
+  //   WebSocket<native_tls::TlsStream<TcpStream>>类型
+  websocket = WebSocket::from_raw_socket(
+    stream, ......)
+}
+此时，枚举类型就能帮上大忙：
+
+
+
+enum Websocket {
+  Tcp(Websocket<TcpStream>),
+  Tls(Websocket<native_tls::TlsStream<TcpStream>>),
+}
+Option 枚举用于处理空值
+在其它编程语言中，往往都有一个 null 关键字，该关键字用于表明一个变量当前的值为空（不是零值，例如整形的零值是 0），也就是不存在值。当你对这些 null 进行操作时，例如调用一个方法，就会直接抛出null 异常，导致程序的崩溃，因此我们在编程时需要格外的小心去处理这些 null 空值。
+Rust 吸取了众多教训，决定抛弃 null，而改为使用 Option 枚举变量来表述这种结果。
+
+Option 枚举包含两个成员，一个成员表示含有值：Some(T), 另一个表示没有值：None，定义如下：
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+let some_number = Some(5);
+let some_string = Some("a string");
+
+let absent_number: Option<i32> = None;
+如果使用 None 而不是 Some，需要告诉 Rust Option<T> 是什么类型的，因为编译器只通过 None 值无法推断出 Some 成员保存的值的类型。
+当有一个 Some 值时，我们就知道存在一个值，而这个值保存在 Some 中。当有个 None 值时，在某种意义上，它跟空值具有相同的意义：并没有一个有效的值。那么，Option<T> 为什么就比空值要好呢？
+
+let x: i8 = 5;
+let y: Option<i8> = Some(5);
+let sum = x + y;
+
+fn plus_one(x: Option<i32>) -> Option<i32> {
+    match x {
+        None => None,
+        Some(i) => Some(i + 1),
+    }
+}
+let five = Some(5);
+let six = plus_one(five);
+let none = plus_one(None);
+### 数组
+在日常开发中，使用最广的数据结构之一就是数组，在 Rust 中，最常用的数组有两种，第一种是速度很快但是长度固定的 array，第二种是可动态增长的但是有性能损耗的 Vector，在本书中，我们称 array 为数组，Vector 为动态数组。
+这两个数组的关系跟 &str 与 String 的关系很像，前者是长度固定的字符串切片，后者是可动态增长的字符串。其实，在 Rust 中无论是 String 还是 Vector，它们都是 Rust 的高级类型：集合类型，
+
+数组的三要素：
+
+1.长度固定
+2.元素必须有相同的类型
+3.依次线性排列
+创建数组
+在 Rust 中，数组是这样定义的：
+fn main() {
+    let a = [1, 2, 3, 4, 5];
+}
+因此数组 array 是存储在栈上，性能也会非常优秀。与此对应，动态数组 Vector 是存储在堆上，因此长度可以动态改变。当你不确定是使用数组还是动态数组时，那就应该使用后者，
+
+#![allow(unused)]
+fn main() {
+let months = ["January", "February", "March", "April", "May", "June", "July",
+              "August", "September", "October", "November", "December"];
+}
+在一些时候，还需要为数组声明类型，如下所示：let a: [i32; 5] = [1, 2, 3, 4, 5];
+访问数组元素
+因为数组是连续存放元素的，因此可以通过索引的方式来访问存放其中的元素：
+fn main() {
+    let a = [9, 8, 7, 6, 5];
+
+    let first = a[0]; // 获取a数组第一个元素
+    let second = a[1]; // 获取第二个元素
+}
+越界访问
+如果使用超出数组范围的索引访问数组元素，会怎么样？下面是一个接收用户的控制台输入，然后将其作为索引访问数组元素的例子：
+use std::io;
+
+fn main() {
+    let a = [1, 2, 3, 4, 5];
+
+    println!("Please enter an array index.");
+
+    let mut index = String::new();
+    // 读取控制台的输出
+    io::stdin()
+        .read_line(&mut index)
+        .expect("Failed to read line");
+
+    let index: usize = index
+        .trim()
+        .parse()
+        .expect("Index entered was not a number");
+
+    let element = a[index];
+
+    println!(
+        "The value of the element at index {} is: {}",
+        index, element
+    );
+}
+数组切片
+在之前的章节，我们有讲到 切片 这个概念，它允许你引用集合中的部分连续片段，而不是整个集合，对于数组也是，数组切片允许我们引用数组的一部分：
+
+
+
+let a: [i32; 5] = [1, 2, 3, 4, 5];
+let slice: &[i32] = &a[1..3];
+assert_eq!(slice, &[2, 3]);
+上面的数组切片 slice 的类型是&[i32]，与之对比，数组的类型是[i32;5]，简单总结下切片的特点：
+1.切片的长度可以与数组不同，并不是固定的，而是取决于你使用时指定的起始和结束位置
+2.创建切片的代价非常小，因为切片只是针对底层数组的一个引用
+3.切片类型[T]拥有不固定的大小，而切片引用类型&[T]则具有固定的大小，因为 Rust 很多时候都需要固定大小数据类型，因此&[T]更有用,&str字符串切片也同理
+fn main() {
+  // 编译器自动推导出one的类型
+  let one             = [1, 2, 3];
+  // 显式类型标注
+  let two: [u8; 3]    = [1, 2, 3];
+  let blank1          = [0; 3];
+  let blank2: [u8; 3] = [0; 3];
+
+  // arrays是一个二维数组，其中每一个元素都是一个数组，元素类型是[u8; 3]
+  let arrays: [[u8; 3]; 4]  = [one, two, blank1, blank2];
+
+  // 借用arrays的元素用作循环中
+  for a in &arrays {
+    print!("{:?}: ", a);
+    // 将a变成一个迭代器，用于循环
+    // 你也可以直接用for n in a {}来进行循环
+    for n in a.iter() {
+      print!("\t{} + 10 = {}", n, n+10);
+    }
+
+    let mut sum = 0;
+    // 0..a.len,是一个 Rust 的语法糖，其实就等于一个数组，元素是从0,1,2一直增加到到a.len-1
+    for i in 0..a.len() {
+      sum += a[i];
+    }
+    println!("\t({:?} = {})", a, sum);
+  }
+}
+数组类型容易跟数组切片混淆，[T;n]描述了一个数组的类型，而[T]描述了切片的类型， 因为切片是运行期的数据结构，它的长度无法在编译期得知，因此不能用[T;n]的形式去描述
+[u8; 3]和[u8; 4]是不同的类型，数组的长度也是类型的一部分
+在实际开发中，使用最多的是数组切片[T]，我们往往通过引用的方式去使用&[T]，因为后者有固定的类型大小
+### 7月12日
+### 模式匹配
+在 Rust 中，模式匹配最常用的就是 match 和 if let，
+先来看一个关于 match 的简单例子：
+enum Direction {
+    East,
+    West,
+    North,
+    South,
+}
+
+fn main() {
+    let dire = Direction::South;
+    match dire {
+        Direction::East => println!("East"),
+        Direction::North | Direction::South => {
+            println!("South or North");
+        },
+        _ => println!("West"),
+    };
+}
+这里我们想去匹配 dire 对应的枚举类型，因此在 match 中用三个匹配分支来完全覆盖枚举变量 Direction 的所有成员类型，有以下几点值得注意：
+match 的匹配必须要穷举出所有可能，因此这里用 _ 来代表未列出的所有可能性
+match 的每一个分支都必须是一个表达式，且所有分支的表达式最终返回值的类型必须相同
+X | Y，类似逻辑运算符 或，代表该分支可以匹配 X 也可以匹配 Y，只要满足一个即可
+其实 match 跟其他语言中的 switch 非常像，_ 类似于 switch 中的 default。
+match 匹配
+首先来看看 match 的通用形式：
+
+match target {
+    模式1 => 表达式1,
+    模式2 => {
+        语句1;
+        语句2;
+        表达式2
+    },
+    _ => 表达式3
+}
+该形式清晰的说明了何为模式，何为模式匹配：将模式与 target 进行匹配，即为模式匹配，而模式匹配不仅仅局限于 match，后面我们会详细阐述。
+match 允许我们将一个值与一系列的模式相比较，并根据相匹配的模式执行对应的代码，下面让我们来一一详解，先看一个例子：
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter,
+}
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny =>  {
+            println!("Lucky penny!");
+            1
+        },
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter => 25,
+    }
+}
+match 后紧跟着的是一个表达式，跟 if 很像，但是 if 后的表达式必须是一个布尔值，而 match 后的表达式返回值可以是任意类型，只要能跟后面的分支中的模式匹配起来即可，这里的 coin 是枚举 Coin 类型。
+接下来是 match 的分支。一个分支有两个部分：一个模式和针对该模式的处理代码。第一个分支的模式是 Coin::Penny，其后的 => 运算符将模式和将要运行的代码分开。这里的代码就仅仅是表达式 1，不同分支之间使用逗号分隔。
+当 match 表达式执行时，它将目标值 coin 按顺序依次与每一个分支的模式相比较，如果模式匹配了这个值，那么模式之后的代码将被执行。如果模式并不匹配这个值，将继续执行下一个分支。
+每个分支相关联的代码是一个表达式，而表达式的结果值将作为整个 match 表达式的返回值。如果分支有多行代码，那么需要用 {} 包裹，同时最后一行代码需要是一个表达式。
+使用 match 表达式赋值
+还有一点很重要，match 本身也是一个表达式，因此可以用它来赋值：
+
+
+enum IpAddr {
+   Ipv4,
+   Ipv6
+}
+
+fn main() {
+    let ip1 = IpAddr::Ipv6;
+    let ip_str = match ip1 {
+        IpAddr::Ipv4 => "127.0.0.1",
+        _ => "::1",
+    };
+
+    println!("{}", ip_str);
+}
+模式绑定
+模式匹配的另外一个重要功能是从模式中取出绑定的值，例如：
+
+
+
+#[derive(Debug)]
+enum UsState {
+    Alabama,
+    Alaska,
+    // --snip--
+}
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter(UsState), // 25美分硬币
+}
+其中 Coin::Quarter 成员还存放了一个值：美国的某个州（因为在 1999 年到 2008 年间，美国在 25 美分(Quarter)硬币的背后为 50 个州印刷了不同的标记，其它硬币都没有这样的设计）。
+例如有一个印了阿拉斯加州标记的 25 分硬币：Coin::Quarter(UsState::Alaska), 它在匹配时，state 变量将被绑定 UsState::Alaska 的枚举值。
+接下来，我们希望在模式匹配中，获取到 25 美分硬币上刻印的州的名称：
+例如有一个印了阿拉斯加州标记的 25 分硬币：Coin::Quarter(UsState::Alaska), 它在匹配时，state 变量将被绑定 UsState::Alaska 的枚举值。
+enum Action {
+    Say(String),
+    MoveTo(i32, i32),
+    ChangeColorRGB(u16, u16, u16),
+}
+
+fn main() {
+    let actions = [
+        Action::Say("Hello Rust".to_string()),
+        Action::MoveTo(1,2),
+        Action::ChangeColorRGB(255,255,0),
+    ];
+    for action in actions {
+        match action {
+            Action::Say(s) => {
+                println!("{}", s);
+            },
+            Action::MoveTo(x, y) => {
+                println!("point from (0, 0) move to ({}, {})", x, y);
+            },
+            Action::ChangeColorRGB(r, g, _) => {
+                println!("change color into '(r:{}, g:{}, b:0)', 'b' has been ignored",
+                    r, g,
+                );
+            }
+        }
+    }
+Hello Rust
+point from (0, 0) move to (1, 2)
+change color into '(r:255, g:255, b:0)', 'b' has been ignored
+}
+穷尽匹配
+在文章的开头，我们简单总结过 match 的匹配必须穷尽所有情况，下面来举例说明，
+enum Direction {
+    East,
+    West,
+    North,
+    South,
+}
+
+fn main() {
+    let dire = Direction::South;
+    match dire {
+        Direction::East => println!("East"),
+        Direction::North | Direction::South => {
+            println!("South or North");
+        },
+    };
+}
+我们没有处理 Direction::West 的情况，因此会报错：
+_ 通配符
+当我们不想在匹配的时候列出所有值的时候，可以使用 Rust 提供的一个特殊模式，例如，u8 可以拥有 0 到 255 的有效的值，但是我们只关心 1、3、5 和 7 这几个值，不想列出其它的 0、2、4、6、8、9 一直到 255 的值。那么, 我们不必一个一个列出所有值, 因为可以使用特殊的模式 _ 替代：
+
+#![allow(unused)]
+fn main() {
+let some_u8_value = 0u8;
+match some_u8_value {
+    1 => println!("one"),
+    3 => println!("three"),
+    5 => println!("five"),
+    7 => println!("seven"),
+    _ => (),
+}
+}
+if let 匹配
+有时会遇到只有一个模式的值需要被处理，其它值直接忽略的场景，如果用 match 来处理就要写成下面这样：
+
+#![allow(unused)]
+fn main() {
+    let v = Some(3u8);
+    match v {
+        Some(3) => println!("three"),
+        _ => (),
+    }
+}
+three
+我们只想要对 Some(3) 模式进行匹配, 不想处理任何其他 Some<u8> 值或 None 值。但是为了满足 match 表达式（穷尽性）的要求，写代码时必须在处理完这唯一的成员后加上 _ => ()，这样会增加不少无用的代码。
+
+杀鸡焉用牛刀，可以用 if let 的方式来实现：
+if let Some(3) = v {
+    println!("three");
+}
+这两种匹配对于新手来说，可能有些难以抉择，但是只要记住一点就好：当你只要匹配一个条件，且忽略其他条件时就用 if let ，否则都用 match。
+matches!宏
+Rust 标准库中提供了一个非常实用的宏：matches!，它可以将一个表达式跟模式进行匹配，然后返回匹配的结果 true or false。
+
+例如，有一个动态数组，里面存有以下枚举：
+enum MyEnum {
+    Foo,
+    Bar
+}
+
+fn main() {
+    let v = vec![MyEnum::Foo,MyEnum::Bar,MyEnum::Foo];
+}
+现在如果想对 v 进行过滤，只保留类型是 MyEnum::Foo 的元素，你可能想这么写：v.iter().filter(|x| x == MyEnum::Foo);
+但是，实际上这行代码会报错，因为你无法将 x 直接跟一个枚举成员进行比较。好在，你可以使用 match 来完成，但是会导致代码更为啰嗦，是否有更简洁的方式？答案是使用 matches!：
+v.iter().filter(|x| matches!(x, MyEnum::Foo));
+
+let foo = 'f';
+assert!(matches!(foo, 'A'..='Z' | 'a'..='z'));
+let bar = Some(4);
+assert!(matches!(bar, Some(x) if x > 2));
+变量覆盖
+无论是 match 还是 if let，他们都可以在模式匹配时覆盖掉老的值，绑定新的值:
+
+
+fn main() {
+   let age = Some(30);
+   println!("在匹配前，age是{:?}",age);
+   if let Some(age) = age {
+       println!("匹配出来的age是{}",age);
+   }
+   println!("在匹配后，age是{:?}",age);
+}
+在匹配前，age是Some(30)
+匹配出来的age是30
+在匹配后，age是Some(30)
+可以看出在 if let 中，= 右边 Some(i32) 类型的 age 被左边 i32 类型的新 age 覆盖了，该覆盖一直持续到 if let 语句块的结束。因此第三个 println! 输出的 age 依然是 Some(i32) 类型。
+对于 match 类型也是如此:
+
+
+fn main() {
+   let age = Some(30);
+   println!("在匹配前，age是{:?}",age);
+   match age {
+       Some(age) =>  println!("匹配出来的age是{}",age),
+       _ => ()
+   }
+   println!("在匹配后，age是{:?}",age);
+}
+解构 Option
+在枚举那章，提到过 Option 枚举，它用来解决 Rust 中变量是否有值的问题，定义如下：
+
+
+
+enum Option<T> {
+    Some(T),
+    None,
+}
+简单解释就是：一个变量要么有值：Some(T), 要么为空：None。
+因为 Option，Some，None 都包含在 prelude 中，因此你可以直接通过名称来使用它们，而无需以 Option::Some 这种形式去使用，总之，千万不要因为调用路径变短了，就忘记 Some 和 None 也是 Option 底下的枚举成员！
+匹配 Option<T>
+使用 Option<T>，是为了从 Some 中取出其内部的 T 值以及处理没有值的情况，为了演示这一点，下面一起来编写一个函数，它获取一个 Option<i32>，如果其中含有一个值，将其加一；如果其中没有值，则函数返回 None 值：
+
+
+
+fn plus_one(x: Option<i32>) -> Option<i32> {
+    match x {
+        None => None,
+        Some(i) => Some(i + 1),
+    }
+}
+let five = Some(5);
+let six = plus_one(five);
+let none = plus_one(None);
+plus_one 接受一个 Option<i32> 类型的参数，同时返回一个 Option<i32> 类型的值(这种形式的函数在标准库内随处所见)，在该函数的内部处理中，如果传入的是一个 None ，则返回一个 None 且不做任何处理；如果传入的是一个 Some(i32)，则通过模式绑定，把其中的值绑定到变量 i 上，然后返回 i+1 的值，同时用 Some 进行包裹。
+
+为了进一步说明，假设 plus_one 函数接受的参数值 x 是 Some(5)，来看看具体的分支匹配情况：
+传入参数 Some(5)
+
+None => None,
+首先是匹配 None 分支，因为值 Some(5) 并不匹配模式 None，所以继续匹配下一个分支。
+Some(i) => Some(i + 1),
+Some(5) 与 Some(i) 匹配吗？当然匹配！它们是相同的成员。i 绑定了 Some 中包含的值，因此 i 的值是 5。接着匹配分支的代码被执行，最后将 i 的值加一并返回一个含有值 6 的新 Some。
+传入参数 None
+接着考虑下 plus_one 的第二个调用，这次传入的 x 是 None， 我们进入 match 并与第一个分支相比较。
+None => None,
+匹配上了！接着程序继续执行该分支后的代码：返回表达式 None 的值，也就是返回一个 None，因为第一个分支就匹配到了，其他的分支将不再比较。
+### 7月13日
+范性学习
